@@ -5,8 +5,16 @@
 
 ShieldCrest::ShieldCrest() : led_strip{LedStrip{NUM_LEDS}}
 {
-    // Filler pattern for now.
-    currPattern = new DemoPattern{led_strip};
+    // Boot visuals to detect resets of the code.
+    led_strip.rgb_list[0] = {0U, 0U, 255U};
+    led_strip.rgb_list[1] = {0U, 0U, 255U};
+    led_strip.rgb_list[2] = {0U, 0U, 255U};
+    led_strip.Show();
+    delay(500);
+
+    led_strip.Clear(true);
+
+    currPattern = new SmoothRainbow{led_strip};
 }
 
 void ShieldCrest::Display()

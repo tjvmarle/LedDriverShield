@@ -12,6 +12,24 @@ struct Neopixel
     uint8_t red{0U};
     uint8_t green{0U};
     uint8_t blue{0U};
+
+    // FIXME: all the implicit type conversions here.
+    Neopixel operator*(double fraction) const
+    {
+        uint8_t red = constrain(this->red * fraction, 0, 255U);
+        uint8_t green = constrain(this->green * fraction, 0, 255U);
+        uint8_t blue = constrain(this->blue * fraction, 0, 255U);
+        return {red, green, blue};
+    }
+
+    Neopixel operator+(const Neopixel& other) const
+    {
+
+        uint8_t red = constrain(this->red + other.red, 0, 255U);
+        uint8_t green = constrain(this->green + other.green, 0, 255U);
+        uint8_t blue = constrain(this->blue + other.blue, 0, 255U);
+        return {red, green, blue};
+    }
 };
 
 //! @brief   Abstraction for controlling an LED-strip

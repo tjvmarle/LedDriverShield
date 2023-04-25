@@ -23,7 +23,7 @@ struct MappedPart
     uint8_t start_range{};
     uint8_t end_range{};
 
-    MappedPart(CrestParts crest_part, uint8_t start_led, uint8_t end_led);
+    MappedPart(CrestParts crest_part, uint8_t&& start_led, uint8_t&& end_led);
     MappedPart(){};
 };
 
@@ -33,5 +33,5 @@ struct MappedShield
     MappedPart PartsList[9U];
     MappedShield();
 
-    const MappedPart& getPart(CrestParts part);
+    const MappedPart& getPart(CrestParts part) const;
 };

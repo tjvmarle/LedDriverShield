@@ -4,6 +4,16 @@
 #include "led_strip.hpp"
 #include <Arduino.h>
 
+// Global reference of colors for the patterns to use.
+constexpr uint8_t maxLedIntensity{255U};
+constexpr Neopixel red{maxLedIntensity, 0U, 0U};
+constexpr Neopixel green{0U, maxLedIntensity, 0U};
+constexpr Neopixel blue{0U, 0U, maxLedIntensity};
+constexpr Neopixel cyan{0U, maxLedIntensity, maxLedIntensity};
+constexpr Neopixel magenta{maxLedIntensity, 0U, maxLedIntensity};
+constexpr Neopixel yellow{maxLedIntensity, maxLedIntensity, 0U};
+constexpr Neopixel ColorList[]{red, green, blue, cyan, magenta, yellow}; //! R,G,B,C,M,Y
+
 //! @brief Abstract base class to write some pretty color-patterns
 class Pattern
 {
@@ -30,6 +40,15 @@ class Pattern
 
 class SmoothRainbow : public Pattern
 {
+  private:
+    const uint16_t cycleTime{2000U}; //! Approximate time for a single revolution of the pattern in ms.
+    uint16_t currCycleStep{0U};      //! Tracks progression on the main cycle.
+    uint16_t cycleSize{1000U};       //! Max length of the main cycle.
+
+    //! @brief            Set a specific part of the crest to rainbow colors. All parts run on the same cycle.
+    //! @param[in]  part  Part of the crest to set the LED colors for.
+    void newRainbow(CrestParts part);
+
   public:
     SmoothRainbow(LedStrip& leds);
 

@@ -6,14 +6,15 @@
 
 #include "shield_crest.hpp"
 
-ShieldCrest zelda_shield{};
-
-// TODO: Move this to its own git repo
 void setup()
 {
 }
 
 void loop()
 {
-    zelda_shield.Display();
+    ShieldCrest zelda_shield{};
+    while (1)
+    {
+        zelda_shield.Display();
+    }
 }
