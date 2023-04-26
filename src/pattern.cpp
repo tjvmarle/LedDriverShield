@@ -14,7 +14,7 @@ void Pattern::SetSpeed(uint8_t speed)
     this->speed = speed;
 }
 
-SmoothRainbow::SmoothRainbow(LedStrip& leds) : Pattern(leds)
+SmoothRainbow::SmoothRainbow(LedStrip& leds) : Pattern(leds), colorA{NeoColor::red}, colorB{NeoColor::blue}
 {
 }
 
@@ -49,20 +49,18 @@ void SmoothRainbow::newRainbow(CrestParts part)
         [8] = 0U,
     }; //! WARN: This can easily crash. Only use the enum-indexed values.
 
-    auto colorA{red}, colorB{blue};
     for (uint8_t ledNr{0U}; ledNr < C_LED_COUNT; ledNr++)
     {
+        // TODO when transitioning a color this probably needs to be done midway through these settings
         const auto syncOffset{(ledNr + syncOffsetList[part]) % C_LED_COUNT};
         led_strip.rgb_list[syncOffset + currPart.start_range] =
-            colorA * colorRatio(ledNr) + colorB * colorRatio(ledNr, true);
+            colorA * colorRatio(ledNr, true) + colorB * colorRatio(ledNr);
     }
-
-    // TODO: Change the color after at least a full cycle, but only when that color reaches zero. This means each color
-    // lives for 1.5 cycle.
 }
 
 void SmoothRainbow::Play()
 {
+    // TODO: measure performance. Millis between cycles. It's getting slow now.
     constexpr CrestParts partList[]{LeftWing, RightWing, CentreBody, LeftClaw, RightClaw};
 
     // TODO: implement seperate handler for the triangles
@@ -72,10 +70,69 @@ void SmoothRainbow::Play()
     }
 
     led_strip.Show();
-    currCycleStep += 8U;
-    currCycleStep = currCycleStep % cycleSize;
+    currCycleStep = (currCycleStep + stepSize) % cycleSize;
+    // delay(2U);
 
-    delay(5U);
+    // Change one of the colors if they reach (close to) zero.
+    constexpr auto quarter{to_u16(cycleSize / 4.0)};
+    constexpr auto threeQuarter{to_u16(3.0 * cycleSize / 4.0)};
+    static_assert(quarter + stepSize < threeQuarter,
+                  "SmoothRainbow::stepSize too big, quarter and threeQuarter will overlap");
+
+    if (currCycleStep != constrain(currCycleStep, quarter, quarter + stepSize - 1U) &&
+        currCycleStep != constrain(currCycleStep, threeQuarter, threeQuarter + stepSize - 1U))
+    {
+        return;
+    }
+
+    // FIXME: Switching colors this way is wrong. Both colors are visible all the time. A third color needs to be
+    // introduced (and a 4th maybe too).
+    // TODO: Write a blink function for debugging purposes
+
+    // Only switch colors if A wasn't switched this cycle and B wasn't during the previous one.
+    const auto nextColor{[&]() {
+        auto colorCandidate{NeoColor::ColorList[random8(6U)]};
+        while (colorCandidate == colorA || colorCandidate == colorB)
+        {
+            colorCandidate = NeoColor::ColorList[random8(6U)];
+        }
+        return colorCandidate;
+    }};
+    if (currCycleStep >= threeQuarter)
+    {
+        // Should be just on or past 3/4.
+        if (aSwitched)
+        {
+            return;
+        }
+
+        if (bSwitched)
+        {
+            bSwitched = false;
+            return;
+        }
+
+        // FIXME: Choose a color not already present
+        colorB = nextColor();
+        bSwitched = true;
+    }
+    else
+    {
+        // Should be just on or past 1/4.
+        if (bSwitched)
+        {
+            return;
+        }
+
+        if (aSwitched)
+        {
+            aSwitched = false;
+            return;
+        }
+
+        colorA = nextColor();
+        aSwitched = true;
+    }
 }
 
 DemoPattern::DemoPattern(LedStrip& leds) : Pattern(leds)

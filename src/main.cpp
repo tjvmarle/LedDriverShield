@@ -6,8 +6,12 @@
 
 #include "shield_crest.hpp"
 
+#include "avr8-stub.h"
+
 void setup()
 {
+    // debug_init();
+    randomSeed(0); // TODO: find something for this.
 }
 
 void loop()

@@ -30,6 +30,12 @@ struct Neopixel
         uint8_t blue = constrain(this->blue + other.blue, 0, 255U);
         return {red, green, blue};
     }
+
+    bool operator==(const Neopixel& other) const
+    {
+
+        return (red == other.red) && (green == other.green) && (blue == other.blue);
+    }
 };
 
 //! @brief   Abstraction for controlling an LED-strip
