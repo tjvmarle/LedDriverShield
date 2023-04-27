@@ -32,7 +32,7 @@ void SmoothRainbow::newRainbow(CrestParts part)
 
     // LED 0 will start at the 50/50 color mix.
     auto colorRatio{[&](const uint8_t ledNr, const bool shiftHalf = false) {
-        uint16_t cyclePosition{to_u16(round(to_double(ledNr) * cycleFraction) + currCycleStep)};
+        uint16_t cyclePosition{to_u16(round(to_double(ledNr) * cycleFraction) + currCycleStep) % cycleSize};
         return sin(to_double(cyclePosition) * piFraction + (shiftHalf ? M_PI : 0.0)) / 2.0 + 0.5;
     }};
 
@@ -49,19 +49,59 @@ void SmoothRainbow::newRainbow(CrestParts part)
         [8] = 0U,
     }; //! WARN: This can easily crash. Only use the enum-indexed values.
 
+    // TODO: Get rid of this duplication.
+    constexpr auto quarter{to_u16(cycleSize / 4.0)};
+    constexpr auto threeQuarter{to_u16(3.0 * cycleSize / 4.0)};
+    static_assert(quarter + stepSize < threeQuarter,
+                  "SmoothRainbow::stepSize too big, quarter and threeQuarter will overlap");
+
+    Neopixel localA{colorA}, localB{colorB};
+    using CT = ColorTransition;
+    // FIXME: there seems to be a single frame where a part of the left wing blinks in a different color
+    // Seems to occur every 1.5 cycle.
+    if (switchingColor != CT::None)
+    {
+        // One of the colors has to be averaged based on their progression in the switching cycle.
+        const bool doA{switchingColor == CT::A};
+        auto& changingColor{doA ? colorA : colorB};
+
+        // A switches from quarter, B from threeQuarter.
+        const auto& deltapoint{doA ? quarter : threeQuarter};
+        auto progression{to_double(currCycleStep + (currCycleStep < deltapoint ? cycleSize : 0U) - deltapoint) /
+                         to_double(cycleSize)};
+        progression *= 1.5;
+
+        if (progression >= 1.0)
+        {
+            changingColor = nextColor;
+            switchingColor = CT::None;
+        }
+        else
+        {
+            const auto mixColor{nextColor * progression + changingColor * (1.0 - progression)};
+            if (doA)
+            {
+                localA = mixColor;
+            }
+            else
+            {
+                localB = mixColor;
+            }
+        }
+    }
+
     for (uint8_t ledNr{0U}; ledNr < C_LED_COUNT; ledNr++)
     {
-        // TODO when transitioning a color this probably needs to be done midway through these settings
         const auto syncOffset{(ledNr + syncOffsetList[part]) % C_LED_COUNT};
         led_strip.rgb_list[syncOffset + currPart.start_range] =
-            colorA * colorRatio(ledNr, true) + colorB * colorRatio(ledNr);
+            localA * colorRatio(ledNr, true) + localB * colorRatio(ledNr);
     }
 }
 
 void SmoothRainbow::Play()
 {
     // TODO: measure performance. Millis between cycles. It's getting slow now.
-    constexpr CrestParts partList[]{LeftWing, RightWing, CentreBody, LeftClaw, RightClaw};
+    constexpr CrestParts partList[]{LeftWing /*, RightWing, CentreBody, LeftClaw, RightClaw*/};
 
     // TODO: implement seperate handler for the triangles
     for (const auto part : partList)
@@ -73,24 +113,22 @@ void SmoothRainbow::Play()
     currCycleStep = (currCycleStep + stepSize) % cycleSize;
     // delay(2U);
 
-    // Change one of the colors if they reach (close to) zero.
     constexpr auto quarter{to_u16(cycleSize / 4.0)};
     constexpr auto threeQuarter{to_u16(3.0 * cycleSize / 4.0)};
     static_assert(quarter + stepSize < threeQuarter,
                   "SmoothRainbow::stepSize too big, quarter and threeQuarter will overlap");
 
-    if (currCycleStep != constrain(currCycleStep, quarter, quarter + stepSize - 1U) &&
-        currCycleStep != constrain(currCycleStep, threeQuarter, threeQuarter + stepSize - 1U))
+    // Change one of the colors if they reach (close to) zero.
+    if (switchingColor != ColorTransition::None ||
+        (currCycleStep != constrain(currCycleStep, quarter, quarter + stepSize - 1U)) &&
+            (currCycleStep != constrain(currCycleStep, threeQuarter, threeQuarter + stepSize - 1U)))
     {
         return;
     }
 
-    // FIXME: Switching colors this way is wrong. Both colors are visible all the time. A third color needs to be
-    // introduced (and a 4th maybe too).
     // TODO: Write a blink function for debugging purposes
 
-    // Only switch colors if A wasn't switched this cycle and B wasn't during the previous one.
-    const auto nextColor{[&]() {
+    const auto giveNextColor{[&]() {
         auto colorCandidate{NeoColor::ColorList[random8(6U)]};
         while (colorCandidate == colorA || colorCandidate == colorB)
         {
@@ -98,41 +136,48 @@ void SmoothRainbow::Play()
         }
         return colorCandidate;
     }};
+
+    // Only switch colors if A wasn't switched this cycle and B wasn't during the previous one.
+    const auto shouldSwitch{[&](bool otherSwitch, bool& thisSwitch) {
+        // If the other color switched this cycle this one won't.
+        if (otherSwitch)
+        {
+            return false;
+        }
+
+        // If this color switched in the previous cycle we also skip, but reset the flag.
+        if (thisSwitch)
+        {
+            thisSwitch = false;
+            return false;
+        }
+
+        return true;
+    }};
+
     if (currCycleStep >= threeQuarter)
     {
         // Should be just on or past 3/4.
-        if (aSwitched)
+        if (!shouldSwitch(aSwitched, bSwitched))
         {
             return;
         }
 
-        if (bSwitched)
-        {
-            bSwitched = false;
-            return;
-        }
-
-        // FIXME: Choose a color not already present
-        colorB = nextColor();
+        switchingColor = ColorTransition::B;
         bSwitched = true;
     }
     else
     {
         // Should be just on or past 1/4.
-        if (bSwitched)
+        if (!shouldSwitch(bSwitched, aSwitched))
         {
             return;
         }
 
-        if (aSwitched)
-        {
-            aSwitched = false;
-            return;
-        }
-
-        colorA = nextColor();
+        switchingColor = ColorTransition::A;
         aSwitched = true;
     }
+    nextColor = giveNextColor();
 }
 
 DemoPattern::DemoPattern(LedStrip& leds) : Pattern(leds)

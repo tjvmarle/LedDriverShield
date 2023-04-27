@@ -44,11 +44,20 @@ class Pattern
 class SmoothRainbow : public Pattern
 {
   private:
+    enum class ColorTransition
+    {
+        A,
+        B,
+        None
+    };
+
     static constexpr uint16_t cycleSize{1000U}; //! Max length of the main cycle.
     uint16_t currCycleStep{0U};                 //! Tracks progression on the main cycle.
-    static constexpr uint16_t stepSize{10U};    //! Increment size of currCycleStep
-    Neopixel colorA{}, colorB{};
+    static constexpr uint16_t stepSize{20U};    //! Increment size of currCycleStep
+    Neopixel colorA{}, colorB{}, nextColor{};
     bool aSwitched{false}, bSwitched{false};
+
+    ColorTransition switchingColor{ColorTransition::None};
 
     //! @brief            Set a specific part of the crest to rainbow colors. All parts run on the same cycle.
     //! @param[in]  part  Part of the crest to set the LED colors for.

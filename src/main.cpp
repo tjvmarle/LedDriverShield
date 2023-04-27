@@ -10,8 +10,9 @@
 
 void setup()
 {
-    // debug_init();
-    randomSeed(0); // TODO: find something for this.
+    // Serial.begin(9600);
+    // TODO: find something for this. Maybe read a bunch of floating GPIO inputs?
+    randomSeed(0);
 }
 
 void loop()
