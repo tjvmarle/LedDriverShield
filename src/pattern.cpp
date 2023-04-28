@@ -26,28 +26,29 @@ void SmoothRainbow::Init()
 Neopixel SmoothRainbow::getTransitionColor()
 {
     using CT = ColorTransition;
-    if (switchingColor != CT::None)
+    if (switchingColor == CT::None)
     {
-        // One of the colors has to be averaged based on their progression in the switching cycle.
-        const bool doA{switchingColor == CT::A};
-        auto& changingColor{doA ? colorA : colorB};
+        // This can be triggered, but should never be shown.
+        return {};
+    }
+    // One of the colors has to be averaged based on their progression in the switching cycle.
+    const bool doA{switchingColor == CT::A};
+    auto& changingColor{doA ? colorA : colorB};
 
-        // FIXME: Transition is smooth, but starts/ends with an annoying blink
-        switchProgression += stepSize;
-        auto progression{to_double(switchProgression) / to_double(cycleSize)};
+    switchProgression += stepSize;
+    auto progression{to_double(switchProgression) / to_double(cycleSize)};
 
-        if (progression >= 1.0)
-        {
-            changingColor = nextColor;
-            switchingColor = CT::None;
-            switchProgression = 0;
+    if (progression >= 1.0)
+    {
+        changingColor = nextColor;
+        switchingColor = CT::None;
+        switchProgression = 0;
 
-            return changingColor;
-        }
-        else
-        {
-            return nextColor * progression + changingColor * (1.0 - progression);
-        }
+        return changingColor;
+    }
+    else
+    {
+        return nextColor * progression + changingColor * (1.0 - progression);
     }
 }
 
@@ -96,8 +97,8 @@ void SmoothRainbow::newRainbow(CrestParts part)
 void SmoothRainbow::Play()
 {
     // TODO: measure performance. Millis between cycles. It's getting slow now.
-    // constexpr CrestParts partList[]{LeftWing, RightWing, CentreBody, LeftClaw, RightClaw};
-    constexpr CrestParts partList[]{RightWing};
+    constexpr CrestParts partList[]{LeftWing, RightWing, CentreBody, LeftClaw, RightClaw};
+    // constexpr CrestParts partList[]{RightWing}; //Debugging purposes.
 
     // TODO: implement seperate handler for the triangles
     for (const auto part : partList)
@@ -115,8 +116,8 @@ void SmoothRainbow::Play()
 
     // Change one of the colors if they reach (close to) zero.
     if (switchingColor != ColorTransition::None ||
-        (currCycleStep != constrain(currCycleStep, quarter, quarter + stepSize - 1U)) &&
-            (currCycleStep != constrain(currCycleStep, threeQuarter, threeQuarter + stepSize - 1U)))
+        ((currCycleStep != constrain(currCycleStep, quarter, quarter + stepSize - 1U)) &&
+         (currCycleStep != constrain(currCycleStep, threeQuarter, threeQuarter + stepSize - 1U))))
     {
         transitionColor = getTransitionColor();
         return;
@@ -167,11 +168,6 @@ void SmoothRainbow::Play()
         // Should be just on or past 1/4.
         if (!shouldSwitch(bSwitched, aSwitched))
         {
-            // Serial.print("Check quarter, a: ");
-            // Serial.print(aSwitched);
-            // Serial.print(", b: ");
-            // Serial.print(bSwitched);
-            // Serial.println(".");
             return;
         }
 
@@ -179,13 +175,7 @@ void SmoothRainbow::Play()
         aSwitched = true;
     }
     nextColor = giveNextColor();
-    // Serial.print("Next color: {");
-    // Serial.print(nextColor.red);
-    // Serial.print(", ");
-    // Serial.print(nextColor.green);
-    // Serial.print(", ");
-    // Serial.print(nextColor.blue);
-    // Serial.println("}.");
+    transitionColor = getTransitionColor();
 }
 
 DemoPattern::DemoPattern(LedStrip& leds) : Pattern(leds)
