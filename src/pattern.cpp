@@ -57,24 +57,29 @@ void SmoothRainbow::newRainbow(CrestParts part)
 
     Neopixel localA{colorA}, localB{colorB};
     using CT = ColorTransition;
-    // FIXME: there seems to be a single frame where a part of the left wing blinks in a different color
-    // Seems to occur every 1.5 cycle.
     if (switchingColor != CT::None)
     {
         // One of the colors has to be averaged based on their progression in the switching cycle.
         const bool doA{switchingColor == CT::A};
         auto& changingColor{doA ? colorA : colorB};
 
-        // A switches from quarter, B from threeQuarter.
-        const auto& deltapoint{doA ? quarter : threeQuarter};
-        auto progression{to_double(currCycleStep + (currCycleStep < deltapoint ? cycleSize : 0U) - deltapoint) /
-                         to_double(cycleSize)};
-        progression *= 1.5;
+        // FIXME: Transition is smooth, but a lot faster than expected.
+        switchProgression += stepSize;
+        auto progression{to_double(switchProgression) / to_double(cycleSize)};
 
         if (progression >= 1.0)
         {
             changingColor = nextColor;
             switchingColor = CT::None;
+            switchProgression = 0;
+            if (doA)
+            {
+                localA = changingColor;
+            }
+            else
+            {
+                localB = changingColor;
+            }
         }
         else
         {
@@ -101,7 +106,7 @@ void SmoothRainbow::newRainbow(CrestParts part)
 void SmoothRainbow::Play()
 {
     // TODO: measure performance. Millis between cycles. It's getting slow now.
-    constexpr CrestParts partList[]{LeftWing /*, RightWing, CentreBody, LeftClaw, RightClaw*/};
+    constexpr CrestParts partList[]{LeftWing, RightWing, CentreBody, LeftClaw, RightClaw};
 
     // TODO: implement seperate handler for the triangles
     for (const auto part : partList)
@@ -171,6 +176,11 @@ void SmoothRainbow::Play()
         // Should be just on or past 1/4.
         if (!shouldSwitch(bSwitched, aSwitched))
         {
+            // Serial.print("Check quarter, a: ");
+            // Serial.print(aSwitched);
+            // Serial.print(", b: ");
+            // Serial.print(bSwitched);
+            // Serial.println(".");
             return;
         }
 
@@ -178,6 +188,13 @@ void SmoothRainbow::Play()
         aSwitched = true;
     }
     nextColor = giveNextColor();
+    // Serial.print("Next color: {");
+    // Serial.print(nextColor.red);
+    // Serial.print(", ");
+    // Serial.print(nextColor.green);
+    // Serial.print(", ");
+    // Serial.print(nextColor.blue);
+    // Serial.println("}.");
 }
 
 DemoPattern::DemoPattern(LedStrip& leds) : Pattern(leds)
