@@ -23,6 +23,34 @@ void SmoothRainbow::Init()
     // Nothing for now.
 }
 
+Neopixel SmoothRainbow::getTransitionColor()
+{
+    using CT = ColorTransition;
+    if (switchingColor != CT::None)
+    {
+        // One of the colors has to be averaged based on their progression in the switching cycle.
+        const bool doA{switchingColor == CT::A};
+        auto& changingColor{doA ? colorA : colorB};
+
+        // FIXME: Transition is smooth, but starts/ends with an annoying blink
+        switchProgression += stepSize;
+        auto progression{to_double(switchProgression) / to_double(cycleSize)};
+
+        if (progression >= 1.0)
+        {
+            changingColor = nextColor;
+            switchingColor = CT::None;
+            switchProgression = 0;
+
+            return changingColor;
+        }
+        else
+        {
+            return nextColor * progression + changingColor * (1.0 - progression);
+        }
+    }
+}
+
 void SmoothRainbow::newRainbow(CrestParts part)
 {
     const auto& currPart{shield.getPart(part)};
@@ -55,46 +83,8 @@ void SmoothRainbow::newRainbow(CrestParts part)
     static_assert(quarter + stepSize < threeQuarter,
                   "SmoothRainbow::stepSize too big, quarter and threeQuarter will overlap");
 
-    Neopixel localA{colorA}, localB{colorB};
-    using CT = ColorTransition;
-    if (switchingColor != CT::None)
-    {
-        // One of the colors has to be averaged based on their progression in the switching cycle.
-        const bool doA{switchingColor == CT::A};
-        auto& changingColor{doA ? colorA : colorB};
-
-        // FIXME: Transition is smooth, but a lot faster than expected.
-        switchProgression += stepSize;
-        auto progression{to_double(switchProgression) / to_double(cycleSize)};
-
-        if (progression >= 1.0)
-        {
-            changingColor = nextColor;
-            switchingColor = CT::None;
-            switchProgression = 0;
-            if (doA)
-            {
-                localA = changingColor;
-            }
-            else
-            {
-                localB = changingColor;
-            }
-        }
-        else
-        {
-            const auto mixColor{nextColor * progression + changingColor * (1.0 - progression)};
-            if (doA)
-            {
-                localA = mixColor;
-            }
-            else
-            {
-                localB = mixColor;
-            }
-        }
-    }
-
+    const bool switchA{switchingColor == ColorTransition::A}, switchB{switchingColor == ColorTransition::B};
+    Neopixel localA{switchA ? transitionColor : colorA}, localB{switchB ? transitionColor : colorB};
     for (uint8_t ledNr{0U}; ledNr < C_LED_COUNT; ledNr++)
     {
         const auto syncOffset{(ledNr + syncOffsetList[part]) % C_LED_COUNT};
@@ -106,7 +96,8 @@ void SmoothRainbow::newRainbow(CrestParts part)
 void SmoothRainbow::Play()
 {
     // TODO: measure performance. Millis between cycles. It's getting slow now.
-    constexpr CrestParts partList[]{LeftWing, RightWing, CentreBody, LeftClaw, RightClaw};
+    // constexpr CrestParts partList[]{LeftWing, RightWing, CentreBody, LeftClaw, RightClaw};
+    constexpr CrestParts partList[]{RightWing};
 
     // TODO: implement seperate handler for the triangles
     for (const auto part : partList)
@@ -116,7 +107,6 @@ void SmoothRainbow::Play()
 
     led_strip.Show();
     currCycleStep = (currCycleStep + stepSize) % cycleSize;
-    // delay(2U);
 
     constexpr auto quarter{to_u16(cycleSize / 4.0)};
     constexpr auto threeQuarter{to_u16(3.0 * cycleSize / 4.0)};
@@ -128,6 +118,7 @@ void SmoothRainbow::Play()
         (currCycleStep != constrain(currCycleStep, quarter, quarter + stepSize - 1U)) &&
             (currCycleStep != constrain(currCycleStep, threeQuarter, threeQuarter + stepSize - 1U)))
     {
+        transitionColor = getTransitionColor();
         return;
     }
 

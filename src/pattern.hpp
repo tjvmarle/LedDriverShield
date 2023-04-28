@@ -55,7 +55,7 @@ class SmoothRainbow : public Pattern
     uint16_t currCycleStep{0U};                 //! Tracks progression on the main cycle.
     static constexpr uint16_t stepSize{10U};    //! Increment size of currCycleStep
 
-    Neopixel colorA{}, colorB{}, nextColor{};
+    Neopixel colorA{}, colorB{}, nextColor{}, transitionColor{};
     bool aSwitched{false}, bSwitched{false};
     ColorTransition switchingColor{ColorTransition::None};
     uint16_t switchProgression{0U};
@@ -63,6 +63,8 @@ class SmoothRainbow : public Pattern
     //! @brief            Set a specific part of the crest to rainbow colors. All parts run on the same cycle.
     //! @param[in]  part  Part of the crest to set the LED colors for.
     void newRainbow(CrestParts part);
+
+    Neopixel getTransitionColor();
 
   public:
     SmoothRainbow(LedStrip& leds);
