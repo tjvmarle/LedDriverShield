@@ -15,7 +15,6 @@ constexpr uint32_t MAX_CURRENT_SUPPLY{2400U}; // 2.5A minus a small buffer.
 constexpr uint32_t MAX_LED_LVL{255u};
 constexpr uint32_t LED_COLORS{3U};
 constexpr uint32_t MAX_LED_LEVELS{NUM_LEDS * MAX_LED_LVL * LED_COLORS}; // 151.470
-constexpr uint32_t MAX_ALLOWED_LEVELS{};
 
 constexpr double LVLS_PER_MILLI_AMP{static_cast<double>(MAX_LED_LEVELS) / static_cast<double>(MAX_CURRENT_DRAWN)};
 constexpr double MAX_AVAIL_LVLS{static_cast<double>(LVLS_PER_MILLI_AMP) * static_cast<double>(MAX_CURRENT_SUPPLY)};

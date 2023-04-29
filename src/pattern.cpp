@@ -100,13 +100,13 @@ void SmoothRainbow::setRainbowTriangle()
     //
     //           8 /\ 7 <-- Top-right is default 0, this         /\     No top-right definition required here, since
     //            /  \      syncs up all the different parts    /  \    we're just averaging already caluclated colors
-    //           /    \                                        /    \
-    //        9 /______\ 6                                    /______\
+    //           /    \                                        /    \   .
+    //        9 /______\ 6                                    /______\  .
     //                                                         4    3
-    //    10 /\           /\ 5                            /\ 5        2 /\
+    //    10 /\           /\ 5                            /\ 5        2 /\     .
     //      /  \         /  \                            /  \          /  \    Both outerleds on this side
     //     /    \       /    \                          /    \        /    \   map to innerled 2
-    // 11 /______\     /______\ 4                      /______\ 0  1 /______\
+    // 11 /______\     /______\ 4                      /______\ 0  1 /______\  .
     //     0    1       2    3
     //
     // TODO: This could easily be achieved by defining these parts as objects and overload the indexing [].
