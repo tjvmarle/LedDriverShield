@@ -8,5 +8,8 @@
 include
 lib
 
+# Additional security, since this file also resides in /include
+wifi_creds.*
+
 # Perhaps when I find time before the heat death of the universe
 test
