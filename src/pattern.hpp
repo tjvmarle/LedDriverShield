@@ -7,7 +7,7 @@
 // Global reference of colors for the patterns to use.
 namespace NeoColor
 {
-constexpr uint8_t maxLedIntensity{100U}; // Temp, so I don't blind myself during testing.
+constexpr uint8_t maxLedIntensity{255U}; // Temp, so I don't blind myself during testing.
 constexpr Neopixel red{maxLedIntensity, 0U, 0U};
 constexpr Neopixel green{0U, maxLedIntensity, 0U};
 constexpr Neopixel blue{0U, 0U, maxLedIntensity};
@@ -53,7 +53,7 @@ class SmoothRainbow : public Pattern
 
     static constexpr uint16_t cycleSize{1000U}; //! Max length of the main cycle.
     uint16_t currCycleStep{0U};                 //! Tracks progression on the main cycle.
-    static constexpr uint16_t stepSize{10U};    //! Increment size of currCycleStep
+    static constexpr uint16_t stepSize{5U};     //! Increment size of currCycleStep
 
     Neopixel colorA{}, colorB{}, nextColor{}, transitionColor{};
     bool aSwitched{false}, bSwitched{false};
@@ -62,9 +62,10 @@ class SmoothRainbow : public Pattern
 
     //! @brief            Set a specific part of the crest to rainbow colors. All parts run on the same cycle.
     //! @param[in]  part  Part of the crest to set the LED colors for.
-    void newRainbow(CrestParts part);
+    void setRainbowPart(CrestParts part);
 
     Neopixel getTransitionColor();
+    void setRainbowTriangle();
 
   public:
     SmoothRainbow(LedStrip& leds);

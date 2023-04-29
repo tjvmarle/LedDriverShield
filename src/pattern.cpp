@@ -52,8 +52,9 @@ Neopixel SmoothRainbow::getTransitionColor()
     }
 }
 
-void SmoothRainbow::newRainbow(CrestParts part)
+void SmoothRainbow::setRainbowPart(CrestParts part)
 {
+    // TODO: Code cleanup
     const auto& currPart{shield.getPart(part)};
     const uint8_t C_LED_COUNT{to_u8(currPart.end_range - currPart.start_range + 1U)};
     const auto cycleFraction{to_double(cycleSize) / to_double(C_LED_COUNT)};
@@ -66,10 +67,11 @@ void SmoothRainbow::newRainbow(CrestParts part)
     }};
 
     // Offsets to position the first LED more-or-less at a top-right position
+    // clang-format off
     constexpr uint8_t syncOffsetList[9U] = {
-        [0] = 0U, // These are only here for compiling purposes
-        [1] = 0U,
-        [2] = 0U,
+        [CrestParts::TopTriangle] = 3U,
+        [CrestParts::LeftTriangle] = 5U,
+        [CrestParts::RightTriangle] = 3U,
         [CrestParts::LeftWing] = 7U,
         [CrestParts::RightWing] = 50U,
         [CrestParts::CentreBody] = 9U,
@@ -77,12 +79,7 @@ void SmoothRainbow::newRainbow(CrestParts part)
         [CrestParts::RightClaw] = 8U,
         [8] = 0U,
     }; //! WARN: This can easily crash. Only use the enum-indexed values.
-
-    // TODO: Get rid of this duplication.
-    constexpr auto quarter{to_u16(cycleSize / 4.0)};
-    constexpr auto threeQuarter{to_u16(3.0 * cycleSize / 4.0)};
-    static_assert(quarter + stepSize < threeQuarter,
-                  "SmoothRainbow::stepSize too big, quarter and threeQuarter will overlap");
+    // clang-format on
 
     const bool switchA{switchingColor == ColorTransition::A}, switchB{switchingColor == ColorTransition::B};
     Neopixel localA{switchA ? transitionColor : colorA}, localB{switchB ? transitionColor : colorB};
@@ -94,17 +91,71 @@ void SmoothRainbow::newRainbow(CrestParts part)
     }
 }
 
+void SmoothRainbow::setRainbowTriangle()
+{
+    // We want the behavior where the 3 triangles act as a single big one. The inner led colors will be calculated as
+    // averages from the other ones.
+    //
+    //        Outer mapping                                 Inner mapping
+    //
+    //           8 /\ 7 <-- Top-right is default 0, this         /\     No top-right definition required here, since
+    //            /  \      syncs up all the different parts    /  \    we're just averaging already caluclated colors
+    //           /    \                                        /    \
+    //        9 /______\ 6                                    /______\
+    //                                                         4    3
+    //    10 /\           /\ 5                            /\ 5        2 /\
+    //      /  \         /  \                            /  \          /  \    Both outerleds on this side
+    //     /    \       /    \                          /    \        /    \   map to innerled 2
+    // 11 /______\     /______\ 4                      /______\ 0  1 /______\
+    //     0    1       2    3
+    //
+    // TODO: This could easily be achieved by defining these parts as objects and overload the indexing [].
+
+    // TODO: Cleanup. Bit of a hack and lots of duplication. It works though.
+    uint8_t bigTriangleIndex[] = {[0] = 99,  [1] = 100, [2] = 115, [3] = 116, [4] = 111,  [5] = 112,
+                                  [6] = 105, [7] = 106, [8] = 107, [9] = 108, [10] = 103, [11] = 104};
+    constexpr uint8_t C_LED_COUNT{sizeof(bigTriangleIndex) / sizeof(bigTriangleIndex[0])};
+    const auto cycleFraction{to_double(cycleSize) / to_double(C_LED_COUNT)};
+    const auto piFraction{2.0 * M_PI / to_double(cycleSize)};
+
+    auto colorRatio{[&](const uint8_t ledNr, const bool shiftHalf = false) {
+        uint16_t cyclePosition{to_u16(round(to_double(ledNr) * cycleFraction) + currCycleStep) % cycleSize};
+        return sin(to_double(cyclePosition) * piFraction + (shiftHalf ? M_PI : 0.0)) / 2.0 + 0.5;
+    }};
+
+    constexpr uint8_t offsetValue{7U};
+    const bool switchA{switchingColor == ColorTransition::A}, switchB{switchingColor == ColorTransition::B};
+    Neopixel localA{switchA ? transitionColor : colorA}, localB{switchB ? transitionColor : colorB};
+    for (uint8_t ledNr{0U}; ledNr < C_LED_COUNT; ledNr++)
+    {
+        const uint8_t syncedLed{to_u8((ledNr + offsetValue) % C_LED_COUNT)};
+        led_strip.rgb_list[bigTriangleIndex[syncedLed]] = localA * colorRatio(ledNr, true) + localB * colorRatio(ledNr);
+    }
+
+    // The inner leds are just averages of the outervalues.
+    uint8_t innerLedList[] = {[0] = 101, [1] = 114, [2] = 113, [3] = 110, [4] = 109, [5] = 102};
+    constexpr uint8_t C_HALF_COUNT{sizeof(innerLedList) / sizeof(innerLedList[0])};
+    for (uint8_t ledNr{0U}; ledNr < C_HALF_COUNT; ledNr++)
+    {
+        // innerled 0 maps to outerleds 0-1, 1 to 2-3, etc.
+        const auto& color1{led_strip.rgb_list[bigTriangleIndex[2U * ledNr]]};
+        const auto& color2{led_strip.rgb_list[bigTriangleIndex[2U * ledNr + 1]]};
+        const auto avgColor{color1 * 0.5 + color2 * 0.5};
+        led_strip.rgb_list[innerLedList[ledNr]] = avgColor;
+    }
+}
+
 void SmoothRainbow::Play()
 {
     // TODO: measure performance. Millis between cycles. It's getting slow now.
     constexpr CrestParts partList[]{LeftWing, RightWing, CentreBody, LeftClaw, RightClaw};
-    // constexpr CrestParts partList[]{RightWing}; //Debugging purposes.
+    // constexpr CrestParts partList[]{RightWing}; // Debugging purposes.
 
-    // TODO: implement seperate handler for the triangles
     for (const auto part : partList)
     {
-        newRainbow(part);
+        setRainbowPart(part);
     }
+    setRainbowTriangle();
 
     led_strip.Show();
     currCycleStep = (currCycleStep + stepSize) % cycleSize;
@@ -126,10 +177,10 @@ void SmoothRainbow::Play()
     // TODO: Write a blink function for debugging purposes
 
     const auto giveNextColor{[&]() {
-        auto colorCandidate{NeoColor::ColorList[random8(6U)]};
+        auto colorCandidate{NeoColor::ColorList[random16(6U)]};
         while (colorCandidate == colorA || colorCandidate == colorB)
         {
-            colorCandidate = NeoColor::ColorList[random8(6U)];
+            colorCandidate = NeoColor::ColorList[random16(6U)];
         }
         return colorCandidate;
     }};
