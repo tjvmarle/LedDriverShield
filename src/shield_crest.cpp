@@ -15,6 +15,7 @@ ShieldCrest::ShieldCrest() : led_strip{LedStrip{NUM_LEDS}}
     led_strip.Clear(true);
 
     currPattern = new SmoothRainbow{led_strip};
+    // currPattern = new DemoPattern{led_strip};
 }
 
 void ShieldCrest::Display()

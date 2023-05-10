@@ -7,7 +7,7 @@
 // Global reference of colors for the patterns to use.
 namespace NeoColor
 {
-constexpr uint8_t maxLedIntensity{255U}; // Temp, so I don't blind myself during testing.
+constexpr uint8_t maxLedIntensity{100U}; // FIXME: Temp, so I don't blind myself during testing.
 constexpr Neopixel red{maxLedIntensity, 0U, 0U};
 constexpr Neopixel green{0U, maxLedIntensity, 0U};
 constexpr Neopixel blue{0U, 0U, maxLedIntensity};

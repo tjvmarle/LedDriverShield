@@ -10,7 +10,7 @@ constexpr uint32_t MAX_CURRENT_LED{60U};                          // 20mA per co
 constexpr uint32_t MAX_CURRENT_DRAWN{NUM_LEDS * MAX_CURRENT_LED}; //~12.000 mA.
 
 //! @warning Do not exceed the current of the power supply.
-constexpr uint32_t MAX_CURRENT_SUPPLY{2400U}; // 2.5A minus a small buffer.
+constexpr uint32_t MAX_CURRENT_SUPPLY{2300U}; // 2.5A minus a small buffer. Don't forget the ESP-01 also needs power.
 
 constexpr uint32_t MAX_LED_LVL{255u};
 constexpr uint32_t LED_COLORS{3U};

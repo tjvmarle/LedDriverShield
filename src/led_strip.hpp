@@ -4,6 +4,8 @@
 #include "crest_mapping.hpp"
 #include <Arduino.h>
 
+#include <NeoPixelBus.h>
+
 //! @brief  Basic struct with color levels for a single LED.
 struct Neopixel
 {
@@ -43,7 +45,7 @@ class LedStrip
 {
   private:
     const uint8_t num_leds;
-    CRGB* actual_led_strip; // The actual LEDs.
+    NeoPixelBus<NeoGrbFeature, NeoEsp8266Uart1Ws2812xMethod> new_actual_strip;
 
     //! @brief Normalize the entire LED-strip so their combined output won't blow up the power supply.
     void clampStrip();

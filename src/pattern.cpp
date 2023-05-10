@@ -99,7 +99,7 @@ void SmoothRainbow::setRainbowTriangle()
     //        Outer mapping                                 Inner mapping
     //
     //           8 /\ 7 <-- Top-right is default 0, this         /\     No top-right definition required here, since
-    //            /  \      syncs up all the different parts    /  \    we're just averaging already caluclated colors
+    //            /  \      syncs up all the different parts    /  \    we're just averaging already calculated colors
     //           /    \                                        /    \   .
     //        9 /______\ 6                                    /______\  .
     //                                                         4    3
@@ -158,6 +158,7 @@ void SmoothRainbow::Play()
     setRainbowTriangle();
 
     led_strip.Show();
+    delay(5U); // TODO: Check max update frequency of the strip. ~170 fps should be a theoretical max.
     currCycleStep = (currCycleStep + stepSize) % cycleSize;
 
     constexpr auto quarter{to_u16(cycleSize / 4.0)};
@@ -242,18 +243,12 @@ void DemoPattern::Play()
     led_strip.Clear();
     const auto part{shield.PartsList[CrestParts::CentreBody]};
 
+    constexpr CrestParts partList[]{CentreBody, LeftWing, RightWing};
+
     for (uint8_t led_index{part.start_range}; led_index <= part.end_range; led_index++)
     {
-        auto& curr_led{led_strip.rgb_list[led_index]};
-
-        uint8_t max{100U};
-        Neopixel clr{max, max, max};
-
-        curr_led.red = clr.red;
-        curr_led.green = clr.green;
-        curr_led.blue = clr.blue;
-
+        led_strip.rgb_list[led_index] = NeoColor::blue;
         led_strip.Show();
-        delay(100U);
+        delay(250U);
     }
 }

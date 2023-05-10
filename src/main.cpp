@@ -5,38 +5,43 @@
 
 #include "FastLED.h"
 
-#include <ESP8266WiFi.h>
-#include <ESPAsyncTCP.h>
-#include <ESPAsyncWebServer.h>
+#include <NeoPixelBus.h>
 
-#include <Arduino.h>
+const uint8_t dummyVal = 2; // Output pin, but ignored for Esp8266
+NeoPixelBus<NeoGrbFeature, NeoEsp8266Uart1Ws2812xMethod> strip(NUM_LEDS, dummyVal);
 
-AsyncWebServer server(80);
+// #include <ESP8266WiFi.h>
+// #include <ESPAsyncTCP.h>
+// #include <ESPAsyncWebServer.h>
+// #include <ArduinoOTA.h>
 
-void notFound(AsyncWebServerRequest* request)
-{
-    request->send(404, "text/plain", "Not found");
-}
+// AsyncWebServer server(80);
+
+// void notFound(AsyncWebServerRequest* request)
+// {
+//     request->send(404, "text/plain", "Not found");
+// }
 
 void setup()
 {
-    // TODO: Add mDNS
-    WiFi.begin(SSID_HOME, SSID_PASS);
-    if (WiFi.waitForConnectResult() != WL_CONNECTED)
-    {
-        // Fails after 60s. TODO: Create a warning blink.
-    }
-    else
-    {
-        // Create a "Connected blink."
-    }
+    strip.Begin();
+    strip.Show();
 
-    server.on("/", HTTP_GET,
-              [](AsyncWebServerRequest* request) { request->send(200, "text/plain", "Hello, ESP-01 is online!"); });
+    // TODO: Add mDNS, I'm too lazy to remember IP-addresses
+    // WiFi.begin(SSID_HOME, SSID_PASS);
+    // if (WiFi.waitForConnectResult() != WL_CONNECTED)
+    // {
+    //     // Fails after 60s. TODO: Create a warning blink.
+    // }
+    // else
+    // {
+    //     // Create a "Connected blink."
+    // }
 
-    server.onNotFound(notFound);
-
-    server.begin();
+    // server.on("/", HTTP_GET,
+    //           [](AsyncWebServerRequest* request) { request->send(200, "text/plain", "Hello, ESP-01 is online!"); });
+    // server.onNotFound(notFound);
+    // server.begin();
 
     // TODO: find something for this. Get webserver online, read NTP
     random16_set_seed(12345);
@@ -44,10 +49,10 @@ void setup()
 
 void loop()
 {
-    // ShieldCrest zelda_shield{};
-    // while (1)
-    // {
-    //     zelda_shield.Display();
-    //     // TODO: move to ESP-01, add OTA, add webserver
-    // }
+    ShieldCrest zelda_shield{};
+    while (1)
+    {
+        zelda_shield.Display();
+        // TODO: add webserver, add OTA
+    }
 }

@@ -1,12 +1,11 @@
 #include "led_strip.hpp"
 #include "led_constants.hpp"
 
-LedStrip::LedStrip(uint8_t led_count) : num_leds{led_count}
-{
-    actual_led_strip = new CRGB[led_count]; //! Only used on a call to Show().
-    rgb_list = new Neopixel[led_count];     //! Publicly available for modification.
+#include <NeoPixelBus.h>
 
-    FastLED.addLeds<WS2812, LED_PIN, GRB>(actual_led_strip, NUM_LEDS);
+LedStrip::LedStrip(uint8_t led_count) : num_leds{led_count}, new_actual_strip{NUM_LEDS, 0U} // 0U is ignored on ESP8266
+{
+    rgb_list = new Neopixel[led_count]; //! Publicly available for modification.
 }
 
 uint8_t LedStrip::getLedCount()
@@ -35,12 +34,8 @@ void LedStrip::clampStrip()
         {
             // Never save the normalized values to the Neopixel list, otherwise repeated normalizations will keep
             // dimming any unmodified LEDs.
-            auto curr_led{rgb_list[led_index]};
-
-            auto& actual_led{actual_led_strip[led_index]};
-            actual_led.red = curr_led.red;
-            actual_led.green = curr_led.green;
-            actual_led.blue = curr_led.blue;
+            const auto& curr_led{rgb_list[led_index]};
+            new_actual_strip.SetPixelColor(led_index, {curr_led.red, curr_led.green, curr_led.blue});
         }
         return;
     }
@@ -58,14 +53,13 @@ void LedStrip::clampStrip()
         // Never save the normalized values to the Neopixel list, otherwise repeated normalizations will keep dimming
         // any unmodified LEDs.
         auto curr_led{rgb_list[led_index]};
+        // TODO: This can now be done with the *-operator on the entire struct.
         normalize(curr_led.red);
         normalize(curr_led.green);
         normalize(curr_led.blue);
 
-        auto& actual_led{actual_led_strip[led_index]};
-        actual_led.red = curr_led.red;
-        actual_led.green = curr_led.green;
-        actual_led.blue = curr_led.blue;
+        // NeoPixelbus implementation
+        new_actual_strip.SetPixelColor(led_index, {curr_led.red, curr_led.green, curr_led.blue});
     }
 
     // This should never trigger, but I also don't want to risk a blown power supply because of a simple mistake.
@@ -76,7 +70,8 @@ void LedStrip::clampStrip()
         {
             auto curr_led{rgb_list[led_index]};
 
-            curr_led.red = (led_index % 3U != 0U) ? 0U : 10U;
+            // Color every third LED red as a warning.
+            curr_led.red = (led_index % 3U == 0U) ? 10U : 0U;
             curr_led.green = 0U;
             curr_led.blue = 0U;
         }
@@ -86,19 +81,27 @@ void LedStrip::clampStrip()
 void LedStrip::Show()
 {
     clampStrip();
-    FastLED.show();
+    new_actual_strip.Show();
+    // FastLED.show();
 }
 
 void LedStrip::Clear(uint8_t start, uint8_t end, bool show)
 {
-    for (uint8_t led_index{start}; led_index <= end; led_index++)
+    // for (uint8_t led_index{start}; led_index <= end; led_index++)
+    // {
+    //     auto& led{rgb_list[led_index]};
+    //     led.red = 0U;
+    //     led.green = 0U;
+    //     led.blue = 0U;
+    // }
+
+    // TODO: Clear the range, not everything.
+    new_actual_strip.ClearTo({0, 0, 0});
+    if (show)
     {
-        auto& led{rgb_list[led_index]};
-        led.red = 0U;
-        led.green = 0U;
-        led.blue = 0U;
+        new_actual_strip.Show();
     }
-    FastLED.clear(show);
+    // FastLED.clear(show);
 }
 
 void LedStrip::Clear(MappedPart part, bool show)
